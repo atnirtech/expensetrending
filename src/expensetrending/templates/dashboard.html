@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseTrending Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes flash-green { 0% { background-color: #d1fae5; } 100% { background-color: transparent; } }
+        @keyframes flash-red { 0% { background-color: #fee2e2; } 100% { background-color: transparent; } }
+        .flash-success { animation: flash-green 0.8s ease; }
+        .flash-error { animation: flash-red 0.8s ease; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-brand-900 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-brand-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-semibold text-white tracking-tight">ExpenseTrending</h1>
+            </div>
+            <span class="text-indigo-200 text-sm hidden sm:block">Credit Card Expense Dashboard</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Spent</p>
+                <p class="text-2xl font-bold text-brand-900 mt-1" id="totalSpent">--</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Transactions</p>
+                <p class="text-2xl font-bold text-brand-900 mt-1" id="txnCount">--</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Top Category</p>
+                <p class="text-2xl font-bold text-brand-900 mt-1 capitalize" id="topCategory">--</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Monthly Spending Trend</h3>
+                <div class="relative h-80">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Category Breakdown</h3>
+                <div class="relative h-80 flex justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div class="flex flex-wrap items-end gap-4">
+                <div class="min-w-[140px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Bank</label>
+                    <select id="filterBank" class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500 py-2 px-3 border">
+                        <option value="">All Banks</option>
+                    </select>
+                </div>
+                <div class="min-w-[140px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                    <select id="filterCategory" class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500 py-2 px-3 border">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="min-w-[150px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                    <input type="date" id="filterStartDate" class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500 py-2 px-3 border">
+                </div>
+                <div class="min-w-[150px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                    <input type="date" id="filterEndDate" class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500 py-2 px-3 border">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="applyFilters()" class="inline-flex items-center px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        Apply
+                    </button>
+                    <button onclick="clearFilters()" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Transactions</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100">
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-600 transition-colors" onclick="toggleSort('date')">
+                                Date <span id="sortArrowDate" class="text-brand-500"></span>
+                            </th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-600 transition-colors" onclick="toggleSort('amount')">
+                                Amount <span id="sortArrowAmount" class="text-brand-500"></span>
+                            </th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Bank</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
+                        </tr>
+                    </thead>
+                    <tbody id="txnBody" class="divide-y divide-gray-50"></tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="text-center py-12 text-gray-400 hidden">No transactions found.</div>
+            <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                <span id="pageInfo"></span>
+                <div class="flex gap-2">
+                    <button id="prevBtn" onclick="changePage(-1)" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">Prev</button>
+                    <button id="nextBtn" onclick="changePage(1)" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">Next</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-gray-400">
+        ExpenseTrending &middot; Credit Card Statement Analyzer
+    </footer>
+
+<script>
+const BANK_COLORS = {
+    hdfc: '#3b82f6',
+    sbi:  '#22c55e',
+    idfc: '#8b5cf6',
+    icici: '#f97316',
+};
+const CATEGORY_COLORS = [
+    '#6366f1','#22c55e','#f43f5e','#eab308','#8b5cf6','#f97316',
+    '#06b6d4','#ec4899','#a855f7','#14b8a6','#78716c','#64748b',
+    '#0ea5e9','#d946ef','#84cc16','#f59e0b',
+];
+
+function bankColor(bank) {
+    return BANK_COLORS[bank] || '#94a3b8';
+}
+
+function formatINR(n) {
+    return '\u20B9' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+let currentPage = 1;
+const PAGE_SIZE = 25;
+let sortBy = 'date';
+let sortOrder = 'desc';
+let trendChart = null;
+let categoryChart = null;
+let allCategories = [];
+let transactionTypes = [];
+
+// --- Init ---
+async function init() {
+    await loadFilters();
+    await Promise.all([loadSummary(), loadTrend(), loadCategoryBreakdown(), loadTransactions()]);
+}
+
+// --- Summary ---
+async function loadSummary() {
+    const data = await fetch('/api/summary').then(r => r.json());
+    document.getElementById('totalSpent').textContent = formatINR(data.total_spent);
+    document.getElementById('txnCount').textContent = data.transaction_count.toLocaleString('en-IN');
+    document.getElementById('topCategory').textContent = data.top_category;
+}
+
+// --- Filters ---
+async function loadFilters() {
+    const data = await fetch('/api/filters').then(r => r.json());
+    allCategories = data.all_categories || data.categories;
+    transactionTypes = data.transaction_types || ['credit', 'debit'];
+
+    const bankSel = document.getElementById('filterBank');
+    data.banks.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b.toUpperCase();
+        bankSel.appendChild(opt);
+    });
+    const catSel = document.getElementById('filterCategory');
+    data.categories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c.charAt(0).toUpperCase() + c.slice(1);
+        catSel.appendChild(opt);
+    });
+}
+
+function getFilterParams() {
+    const params = new URLSearchParams();
+    const bank = document.getElementById('filterBank').value;
+    const cat = document.getElementById('filterCategory').value;
+    const sd = document.getElementById('filterStartDate').value;
+    const ed = document.getElementById('filterEndDate').value;
+    if (bank) params.set('bank', bank);
+    if (cat) params.set('category', cat);
+    if (sd) params.set('start_date', sd);
+    if (ed) params.set('end_date', ed);
+    return params;
+}
+
+function applyFilters() {
+    currentPage = 1;
+    loadCategoryBreakdown();
+    loadTransactions();
+}
+
+function clearFilters() {
+    document.getElementById('filterBank').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    sortBy = 'date';
+    sortOrder = 'desc';
+    applyFilters();
+}
+
+// --- Monthly Trend ---
+async function loadTrend() {
+    const data = await fetch('/api/monthly-trend').then(r => r.json());
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if (trendChart) trendChart.destroy();
+
+    const datasets = data.datasets.map(ds => ({
+        label: ds.bank.toUpperCase(),
+        data: ds.totals,
+        backgroundColor: bankColor(ds.bank) + '99',
+        borderColor: bankColor(ds.bank),
+        borderWidth: 2,
+        borderRadius: 6,
+    }));
+
+    trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: data.months, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12 } } },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleFont: { size: 13 },
+                    bodyFont: { size: 12 },
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: ctx => '  ' + ctx.dataset.label + ': ' + formatINR(ctx.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                    ticks: { callback: v => '\u20B9' + (v/1000).toFixed(0) + 'k', font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+// --- Category Breakdown ---
+async function loadCategoryBreakdown() {
+    const params = getFilterParams();
+    params.delete('category');
+    const data = await fetch('/api/category-breakdown?' + params).then(r => r.json());
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    if (categoryChart) categoryChart.destroy();
+
+    categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+            datasets: [{
+                data: data.amounts,
+                backgroundColor: CATEGORY_COLORS.slice(0, data.categories.length),
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'right', labels: { usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: ctx => '  ' + ctx.label + ': ' + formatINR(ctx.parsed)
+                    }
+                }
+            }
+        }
+    });
+}
+
+// --- Sorting ---
+function toggleSort(field) {
+    if (sortBy === field) {
+        sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+        sortBy = field;
+        sortOrder = 'desc';
+    }
+    currentPage = 1;
+    loadTransactions();
+}
+
+function updateSortArrows() {
+    document.getElementById('sortArrowDate').textContent = sortBy === 'date' ? (sortOrder === 'desc' ? ' \u25BC' : ' \u25B2') : '';
+    document.getElementById('sortArrowAmount').textContent = sortBy === 'amount' ? (sortOrder === 'desc' ? ' \u25BC' : ' \u25B2') : '';
+}
+
+// --- Transactions ---
+async function loadTransactions() {
+    const params = getFilterParams();
+    params.set('page', currentPage);
+    params.set('page_size', PAGE_SIZE);
+    params.set('sort_by', sortBy);
+    params.set('sort_order', sortOrder);
+    const data = await fetch('/api/transactions?' + params).then(r => r.json());
+
+    const tbody = document.getElementById('txnBody');
+    const empty = document.getElementById('emptyState');
+    tbody.innerHTML = '';
+
+    if (data.transactions.length === 0) {
+        empty.classList.remove('hidden');
+    } else {
+        empty.classList.add('hidden');
+        data.transactions.forEach(tx => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50/50 transition-colors';
+            const isCredit = tx.transaction_type === 'credit';
+            const typeBg = isCredit ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+            tr.innerHTML = `
+                <td class="px-5 py-3 text-gray-600 whitespace-nowrap">${tx.date}</td>
+                <td class="px-5 py-3 text-gray-800 max-w-xs truncate" title="${tx.description}">${tx.description}</td>
+                <td class="px-5 py-3 font-semibold tabular-nums text-gray-800 whitespace-nowrap">${formatINR(tx.amount)}</td>
+                <td class="px-5 py-3 editable cursor-pointer" data-id="${tx._id}" data-field="transaction_type" data-value="${tx.transaction_type}">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeBg}">${tx.transaction_type}</span>
+                </td>
+                <td class="px-5 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white uppercase" style="background:${bankColor(tx.bank)}">${tx.bank}</span>
+                </td>
+                <td class="px-5 py-3 editable cursor-pointer" data-id="${tx._id}" data-field="category" data-value="${tx.category}">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">${tx.category}</span>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('pageInfo').textContent =
+        data.total > 0 ? `Page ${data.page} of ${data.total_pages} (${data.total} results)` : '';
+    document.getElementById('prevBtn').disabled = currentPage <= 1;
+    document.getElementById('nextBtn').disabled = currentPage >= data.total_pages;
+    updateSortArrows();
+}
+
+function changePage(delta) {
+    currentPage += delta;
+    loadTransactions();
+}
+
+// --- Inline Edit ---
+document.addEventListener('click', function(e) {
+    const cell = e.target.closest('td.editable');
+    if (!cell || cell.querySelector('select')) return;
+
+    const field = cell.dataset.field;
+    const currentValue = cell.dataset.value;
+    const txId = cell.dataset.id;
+    const options = field === 'transaction_type' ? transactionTypes : allCategories;
+
+    const select = document.createElement('select');
+    select.className = 'rounded-lg border-gray-300 text-sm py-1 px-2 focus:border-brand-500 focus:ring-brand-500 capitalize border shadow-sm';
+    options.forEach(opt => {
+        const el = document.createElement('option');
+        el.value = opt;
+        el.textContent = opt;
+        if (opt === currentValue) el.selected = true;
+        select.appendChild(el);
+    });
+
+    cell.innerHTML = '';
+    cell.appendChild(select);
+    select.focus();
+
+    async function save() {
+        const newValue = select.value;
+        if (newValue === currentValue) {
+            loadTransactions();
+            return;
+        }
+        try {
+            const res = await fetch('/api/transactions/' + txId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: newValue }),
+            });
+            if (!res.ok) throw new Error('Update failed');
+            cell.dataset.value = newValue;
+            cell.classList.add('flash-success');
+            setTimeout(() => cell.classList.remove('flash-success'), 800);
+            loadTransactions();
+        } catch (err) {
+            cell.classList.add('flash-error');
+            setTimeout(() => cell.classList.remove('flash-error'), 800);
+            loadTransactions();
+        }
+    }
+
+    select.addEventListener('change', save);
+    select.addEventListener('blur', save);
+});
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

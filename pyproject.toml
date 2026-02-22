@@ -1,0 +1,30 @@
+[project]
+name = "expensetrending"
+version = "0.1.0"
+description = "Download credit card statements from Gmail and extract password patterns"
+authors = [
+    {name = "hkochhar",email = "harmeet.kochhar@gmail.com"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "google-api-python-client>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "pypdf>=5.0.0",
+    "pymongo>=4.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "jinja2>=3.1.0",
+]
+
+[project.scripts]
+expensetrending = "expensetrending.main:main"
+expensetrending-web = "expensetrending.web_app:start_server"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.packages]]
+include = "expensetrending"
+from = "src"
