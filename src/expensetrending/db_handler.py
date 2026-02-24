@@ -91,6 +91,14 @@ class ExpenseDB:
         """Return distinct values for a field among debit transactions."""
         return self.collection.distinct(field, {"transaction_type": "debit"})
 
+    def search_by_description(self, description: str) -> list[dict]:
+        """Return debit expenses whose description contains the given substring (case-insensitive)."""
+        query = {
+            "transaction_type": "debit",
+            "description": {"$regex": description, "$options": "i"},
+        }
+        return [self._serialize(d) for d in self.collection.find(query)]
+
     def update_expense(self, expense_id: str, updates: dict) -> bool:
         """Update specific fields of an expense by its _id.
 

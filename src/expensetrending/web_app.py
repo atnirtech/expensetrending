@@ -164,6 +164,15 @@ async def transactions(
     }
 
 
+@app.get("/api/transactions/search")
+async def search_transactions(
+    description: str = Query(..., min_length=1),
+):
+    """Search transactions by description substring (case-insensitive)."""
+    results = db.search_by_description(description)
+    return {"transactions": results, "total": len(results)}
+
+
 @app.get("/api/filters")
 async def filters():
     """Distinct banks, categories, and valid transaction types for dropdowns."""
