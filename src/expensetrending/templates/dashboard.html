@@ -112,8 +112,12 @@
 
         <!-- Transaction Table -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
                 <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Transactions</h3>
+                <div class="relative w-full max-w-xs">
+                    <input type="text" id="searchDescription" placeholder="Search description..." class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500 py-2 pl-9 pr-3 border" oninput="onSearchInput()">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -239,6 +243,7 @@ function clearFilters() {
     document.getElementById('filterCategory').value = '';
     document.getElementById('filterStartDate').value = '';
     document.getElementById('filterEndDate').value = '';
+    document.getElementById('searchDescription').value = '';
     sortBy = 'date';
     sortOrder = 'desc';
     applyFilters();
@@ -348,12 +353,21 @@ function updateSortArrows() {
 
 // --- Transactions ---
 async function loadTransactions() {
-    const params = getFilterParams();
-    params.set('page', currentPage);
-    params.set('page_size', PAGE_SIZE);
-    params.set('sort_by', sortBy);
-    params.set('sort_order', sortOrder);
-    const data = await fetch('/api/transactions?' + params).then(r => r.json());
+    const searchQuery = document.getElementById('searchDescription').value.trim();
+    let data;
+    if (searchQuery) {
+        const params = new URLSearchParams({ description: searchQuery });
+        data = await fetch('/api/transactions/search?' + params).then(r => r.json());
+        data.page = 1;
+        data.total_pages = 1;
+    } else {
+        const params = getFilterParams();
+        params.set('page', currentPage);
+        params.set('page_size', PAGE_SIZE);
+        params.set('sort_by', sortBy);
+        params.set('sort_order', sortOrder);
+        data = await fetch('/api/transactions?' + params).then(r => r.json());
+    }
 
     const tbody = document.getElementById('txnBody');
     const empty = document.getElementById('emptyState');
@@ -396,6 +410,16 @@ async function loadTransactions() {
 function changePage(delta) {
     currentPage += delta;
     loadTransactions();
+}
+
+// --- Description Search ---
+let searchTimer = null;
+function onSearchInput() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        currentPage = 1;
+        loadTransactions();
+    }, 300);
 }
 
 // --- Inline Edit ---
