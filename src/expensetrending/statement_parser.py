@@ -97,14 +97,17 @@ def normalize_date_str(date_str: str) -> str:
     return date_str
 
 
+CATEGORY_PATTERNS = {
+    cat: re.compile("|".join(re.escape(kw) for kw in keywords), re.IGNORECASE)
+    for cat, keywords in CATEGORY_KEYWORDS.items()
+}
+
+
 def categorize_expense(description: str) -> str:
     """Categorize an expense based on its description."""
-    desc_lower = description.lower()
-
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in desc_lower:
-                return category
+    for category, pattern in CATEGORY_PATTERNS.items():
+        if pattern.search(description):
+            return category
 
     return "other"
 
